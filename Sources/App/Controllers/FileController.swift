@@ -1,6 +1,20 @@
 import Fluent
 import Vapor
 
+enum UploadFileErrors: Error {
+    case exceedSize
+    case badExtension
+
+    public var errorDescription: String? {
+          switch self {
+          case .exceedSize:
+              return NSLocalizedString("error ... image size should not exceed 1 mb", comment: "Exceed Size")
+          case .badExtension:
+              return NSLocalizedString("extension is not acceptable", comment: "Bad Extension")
+          }
+      }
+}
+
 struct FileController: RouteCollection {
     private let publicDirectory: String
     init(publicDirectory: String){
@@ -27,7 +41,12 @@ struct FileController: RouteCollection {
 
         let input = try req.content.decode(Input.self)
 
-        let path = publicDirectory + "UploadFiles/" + input.file.filename
+        try validateFile(file: input.file)
+
+        // Generate new Name
+        let imageNewNameAndExtension = "\(UUID())"+".\(input.file.extension!.lowercased())"
+
+        let path = publicDirectory + "UploadFiles/" + imageNewNameAndExtension
 
         // SwiftNIO File handle
         let handle = try await req.application.fileio.openFile(path: path, mode: .write, flags: .allowFileCreation(posixMode:0x744),eventLoop: req.eventLoop).get()
@@ -37,10 +56,20 @@ struct FileController: RouteCollection {
             try? handle.close()
         }
 
-        let uploadedFile =  UploadedFile(title: input.file.filename)
+        let uploadedFile =  UploadedFile(title: imageNewNameAndExtension)
 
         try await uploadedFile.save(on: req.db)
         return try await req.view.render("result", ["fileUrl": "UploadFiles/" + uploadedFile.title])
+    }
+
+    func validateFile(file: File) throws {
+        if file.data.readableBytes > 1_000_000  {
+            throw UploadFileErrors.exceedSize
+        }
+
+        if !["png", "jpeg", "jpg"].contains(file.extension?.lowercased()) {
+            throw UploadFileErrors.badExtension
+        }
     }
 
     func delete(req: Request) async throws -> HTTPStatus {

@@ -9,7 +9,7 @@
     <h1>File upload example</h1>
 
     <form action="/files" method="post" enctype="multipart/form-data">
-        <input type="file" name="file"><br><br>
+        <input type="file" name="file" accept="image/*" ><br><br>
         <input type="submit" value="Submit">
     </form>
   </body>
