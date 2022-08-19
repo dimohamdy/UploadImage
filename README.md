@@ -2,4 +2,4 @@
 Upload file with Vapor
  
 ## Demo
-![](Demo/Demo.gif)
+![](Demo/demo.gif)
